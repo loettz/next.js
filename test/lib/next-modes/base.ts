@@ -24,7 +24,6 @@ export interface NextInstanceOpts {
   files: FileRef | string | { [filename: string]: string | FileRef }
   dependencies?: { [name: string]: string }
   packageJson?: PackageJson
-  packageLockPath?: string
   nextConfig?: NextConfig
   installCommand?: InstallCommand
   buildCommand?: string
@@ -59,7 +58,6 @@ export class NextInstance {
   protected _url: string
   protected _parsedUrl: URL
   protected packageJson?: PackageJson = {}
-  protected packageLockPath?: string
   protected basePath?: string
   protected env?: Record<string, string>
   public forcedPort?: string
@@ -67,6 +65,19 @@ export class NextInstance {
 
   constructor(opts: NextInstanceOpts) {
     Object.assign(this, opts)
+
+    if (!(global as any).isNextDeploy) {
+      this.env = {
+        ...this.env,
+        // remove node_modules/.bin repo path from env
+        // to match CI $PATH value and isolate further
+        PATH: process.env.PATH.split(path.delimiter)
+          .filter((part) => {
+            return !part.includes(path.join('node_modules', '.bin'))
+          })
+          .join(path.delimiter),
+      }
+    }
   }
 
   protected async writeInitialFiles() {
@@ -179,7 +190,6 @@ export class NextInstance {
               dependencies: finalDependencies,
               installCommand: this.installCommand,
               packageJson: this.packageJson,
-              packageLockPath: this.packageLockPath,
               dirSuffix: this.dirSuffix,
             })
           }
@@ -266,7 +276,6 @@ export class NextInstance {
         `
           )
         }
-        require('console').log(`Test directory created at ${this.testDir}`)
       })
   }
 

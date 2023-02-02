@@ -29,7 +29,7 @@ export function validateData(
     weight,
     style,
     preload = true,
-    display = preload ? 'optional' : 'swap',
+    display = 'swap',
     axes,
     fallback,
     adjustFontFallback = true,
@@ -48,22 +48,26 @@ export function validateData(
     nextFontError(`Unknown font \`${fontFamily}\``)
   }
 
-  if (preload && !callSubsets && !config?.subsets) {
-    nextFontError(
-      `Missing selected subsets for font \`${fontFamily}\`. Please specify subsets in the function call or in your \`next.config.js\`. Read more: https://nextjs.org/docs/messages/google-fonts-missing-subsets`
-    )
-  }
-
   const availableSubsets = fontFamilyData.subsets
-  subsets.forEach((subset: string) => {
-    if (!availableSubsets.includes(subset)) {
+  if (availableSubsets.length === 0) {
+    // If the font doesn't have any preloaded subsets, disable preload
+    preload = false
+  } else {
+    if (preload && !callSubsets && !config?.subsets) {
       nextFontError(
-        `Unknown subset \`${subset}\` for font \`${fontFamily}\`.\nAvailable subsets: ${formatValues(
-          availableSubsets
-        )}`
+        `Missing selected subsets for font \`${fontFamily}\`. Please specify subsets in the function call or in your \`next.config.js\`. Read more: https://nextjs.org/docs/messages/google-fonts-missing-subsets`
       )
     }
-  })
+    subsets.forEach((subset: string) => {
+      if (!availableSubsets.includes(subset)) {
+        nextFontError(
+          `Unknown subset \`${subset}\` for font \`${fontFamily}\`.\nAvailable subsets: ${formatValues(
+            availableSubsets
+          )}`
+        )
+      }
+    })
+  }
 
   const fontWeights = fontFamilyData.weights
   const fontStyles = fontFamilyData.styles

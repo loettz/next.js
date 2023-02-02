@@ -36,7 +36,10 @@ async function createTreeCodeFromPath({
   resolveParallelSegments,
 }: {
   pagePath: string
-  resolve: (pathname: string) => Promise<string | undefined>
+  resolve: (
+    pathname: string,
+    resolveDir?: boolean
+  ) => Promise<string | undefined>
   resolveParallelSegments: (
     pathname: string
   ) => [key: string, segment: string][]
@@ -44,12 +47,15 @@ async function createTreeCodeFromPath({
   const splittedPath = pagePath.split(/[\\/]/)
   const appDirPrefix = splittedPath[0]
   const pages: string[] = []
+
   let rootLayout: string | undefined
   let globalError: string | undefined
 
   async function createSubtreePropsFromSegmentPath(
     segments: string[]
-  ): Promise<string> {
+  ): Promise<{
+    treeCode: string
+  }> {
     const segmentPath = segments.join('/')
 
     // Existing tree are the children of the current segment
@@ -78,10 +84,9 @@ async function createTreeCodeFromPath({
       }
 
       const parallelSegmentPath = segmentPath + '/' + parallelSegment
-      const subtree = await createSubtreePropsFromSegmentPath([
-        ...segments,
-        parallelSegment,
-      ])
+      const { treeCode: subtreeCode } = await createSubtreePropsFromSegmentPath(
+        [...segments, parallelSegment]
+      )
 
       // `page` is not included here as it's added above.
       const filePaths = await Promise.all(
@@ -93,10 +98,15 @@ async function createTreeCodeFromPath({
         })
       )
 
+      const layoutPath = filePaths.find(
+        ([type, path]) => type === 'layout' && !!path
+      )?.[1]
       if (!rootLayout) {
-        rootLayout = filePaths.find(
-          ([type, path]) => type === 'layout' && !!path
-        )?.[1]
+        rootLayout = layoutPath
+      }
+
+      if (!rootLayout) {
+        rootLayout = layoutPath
       }
 
       if (!globalError) {
@@ -107,7 +117,7 @@ async function createTreeCodeFromPath({
 
       props[parallelKey] = `[
         '${parallelSegment}',
-        ${subtree},
+        ${subtreeCode},
         {
           ${filePaths
             .filter(([, filePath]) => filePath !== undefined)
@@ -115,6 +125,7 @@ async function createTreeCodeFromPath({
               if (filePath === undefined) {
                 return ''
               }
+
               return `'${file}': [() => import(/* webpackMode: "eager" */ ${JSON.stringify(
                 filePath
               )}), ${JSON.stringify(filePath)}],`
@@ -124,15 +135,23 @@ async function createTreeCodeFromPath({
       ]`
     }
 
-    return `{
-      ${Object.entries(props)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(',\n')}
-    }`
+    return {
+      treeCode: `{
+        ${Object.entries(props)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(',\n')}
+      }`,
+    }
   }
 
-  const tree = await createSubtreePropsFromSegmentPath([])
-  return [`const tree = ${tree}.children;`, pages, rootLayout, globalError]
+  const { treeCode } = await createSubtreePropsFromSegmentPath([])
+
+  return {
+    treeCode: `const tree = ${treeCode}.children;`,
+    pages: `const pages = ${JSON.stringify(pages)};`,
+    rootLayout,
+    globalError,
+  }
 }
 
 function createAbsolutePath(appDir: string, pathToTurnAbsolute: string) {
@@ -187,7 +206,7 @@ const nextAppLoader: webpack.LoaderDefinitionFunction<{
         const rest = path.slice(pathname.length + 1).split('/')
 
         let matchedSegment = rest[0]
-        // It is the actual page, mark it sepcially.
+        // It is the actual page, mark it specially.
         if (rest.length === 1 && matchedSegment === 'page') {
           matchedSegment = PAGE_SEGMENT
         }
@@ -202,7 +221,11 @@ const nextAppLoader: webpack.LoaderDefinitionFunction<{
     return Object.entries(matched)
   }
 
-  const resolver = async (pathname: string) => {
+  const resolver = async (pathname: string, resolveDir?: boolean) => {
+    if (resolveDir) {
+      return createAbsolutePath(appDir, pathname)
+    }
+
     try {
       const resolved = await resolve(this.rootContext, pathname)
       this.addDependency(resolved)
@@ -220,12 +243,16 @@ const nextAppLoader: webpack.LoaderDefinitionFunction<{
     }
   }
 
-  const [treeCode, pages, rootLayout, globalError] =
-    await createTreeCodeFromPath({
-      pagePath,
-      resolve: resolver,
-      resolveParallelSegments,
-    })
+  const {
+    treeCode,
+    pages: pageListCode,
+    rootLayout,
+    globalError,
+  } = await createTreeCodeFromPath({
+    pagePath,
+    resolve: resolver,
+    resolveParallelSegments,
+  })
 
   if (!rootLayout) {
     const errorMessage = `${chalk.bold(
@@ -253,7 +280,7 @@ const nextAppLoader: webpack.LoaderDefinitionFunction<{
 
   const result = `
     export ${treeCode}
-    export const pages = ${JSON.stringify(pages)}
+    export ${pageListCode}
 
     export { default as AppRouter } from 'next/dist/client/components/app-router'
     export { default as LayoutRouter } from 'next/dist/client/components/layout-router'

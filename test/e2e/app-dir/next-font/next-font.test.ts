@@ -223,23 +223,26 @@ createNextDescribe(
           expect($('link[as="font"]').get(0).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/e9b9dc0d8ba35f48.p.woff2',
+            href: '/_next/static/media/e9b9dc0d8ba35f48-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
           expect($('link[as="font"]').get(1).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/b61859a50be14c53.p.woff2',
+            href: '/_next/static/media/b61859a50be14c53-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
           expect($('link[as="font"]').get(2).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/b2104791981359ae.p.woff2',
+            href: '/_next/static/media/b2104791981359ae-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
         })
 
@@ -254,24 +257,27 @@ createNextDescribe(
           expect($('link[as="font"]').get(0).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/e9b9dc0d8ba35f48.p.woff2',
+            href: '/_next/static/media/e9b9dc0d8ba35f48-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
 
           expect($('link[as="font"]').get(1).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/e1053f04babc7571.p.woff2',
+            href: '/_next/static/media/e1053f04babc7571-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
           expect($('link[as="font"]').get(2).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/feab2c68f2a8e9a4.p.woff2',
+            href: '/_next/static/media/feab2c68f2a8e9a4-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
         })
 
@@ -286,17 +292,19 @@ createNextDescribe(
           expect($('link[as="font"]').get(0).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/e9b9dc0d8ba35f48.p.woff2',
+            href: '/_next/static/media/e9b9dc0d8ba35f48-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
 
           expect($('link[as="font"]').get(1).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/75c5faeeb9c86969.p.woff2',
+            href: '/_next/static/media/75c5faeeb9c86969-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
         })
 
@@ -311,18 +319,49 @@ createNextDescribe(
           expect($('link[as="font"]').get(0).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/e9b9dc0d8ba35f48.p.woff2',
+            href: '/_next/static/media/e9b9dc0d8ba35f48-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
 
           expect($('link[as="font"]').get(1).attribs).toEqual({
             as: 'font',
             crossorigin: '',
-            href: '/_next/static/media/568e4c6d8123c4d6.p.woff2',
+            href: '/_next/static/media/568e4c6d8123c4d6-s.p.woff2',
             rel: 'preload',
             type: 'font/woff2',
+            'data-next-font': 'size-adjust',
           })
+        })
+      })
+
+      describe('preconnect', () => {
+        it.each([['page'], ['layout'], ['component']])(
+          'should add preconnect when preloading is disabled in %s',
+          async (type: string) => {
+            const $ = await next.render$(`/preconnect-${type}`)
+
+            // Preconnect
+            expect($('link[rel="preconnect"]').length).toBe(1)
+            expect($('link[rel="preconnect"]').get(0).attribs).toEqual({
+              crossorigin: 'anonymous',
+              href: '/',
+              rel: 'preconnect',
+              'data-next-font': 'size-adjust',
+            })
+            // Preload
+            expect($('link[as="font"]').length).toBe(0)
+          }
+        )
+
+        it('should not preconnect when css is used but no fonts', async () => {
+          const $ = await next.render$('/no-preconnect')
+
+          // Preconnect
+          expect($('link[rel="preconnect"]').length).toBe(0)
+          // Preload
+          expect($('link[as="font"]').length).toBe(0)
         })
       })
     }

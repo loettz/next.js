@@ -21,6 +21,8 @@ function setMessage(error: Error, message: string): void {
 }
 
 export function formatServerError(error: Error): void {
+  if (typeof error?.message !== 'string') return
+
   if (
     error.message.includes(
       'Class extends value undefined is not a constructor or null'
@@ -30,7 +32,7 @@ export function formatServerError(error: Error): void {
       error,
       `${error.message}
 
-This might be caused by a React Class component being rendered in a server component, React Class components only works in Client Components. Read more: https://nextjs.org/docs/messages/class-component-in-server-component`
+This might be caused by a React Class Component being rendered in a Server Component, React Class Components only works in Client Components. Read more: https://nextjs.org/docs/messages/class-component-in-server-component`
     )
     return
   }
